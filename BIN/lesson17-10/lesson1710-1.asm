@@ -8,6 +8,17 @@ CODESEG
 start:
 	mov ax, @data
 	mov ds, ax
+	mov cl, 0
+	jmp cond
+cond:
+	cmp cl, 5
+	jz bod
+	jnz exit
+bod:
+	mov bx, cl
+	mov [bx], cl
+	inc cl
+	jmp cond
 ;code here
 
 exit:

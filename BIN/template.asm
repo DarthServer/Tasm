@@ -1,0 +1,2 @@
+.MODEL small
+.STACK 100h
