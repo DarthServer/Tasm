@@ -10,6 +10,10 @@ start:
 	mov ax, @data
 	mov ds, ax
 
+    mov ax, 100
+    cmp ax, 101
+    jg exit
+    mov ax, 101
 
 ;code here
 

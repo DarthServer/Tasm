@@ -1,16 +1,14 @@
-IDEAL
-MODEL small
-STACK 100h
+.MODEL small
+.STACK 100h
 DATASEG
 ;data
-
+db 3 dup('b'), 'a'
+dw 4
 CODESEG
 ;code
 start:
 	mov ax, @data
 	mov ds, ax
-
-
 ;code here
 
 exit:

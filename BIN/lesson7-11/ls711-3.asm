@@ -1,6 +1,5 @@
-IDEAL
-MODEL small
-STACK 100h
+.MODEL small
+.STACK 100h
 DATASEG
 ;data
 
@@ -10,6 +9,15 @@ start:
 	mov ax, @data
 	mov ds, ax
 
+	mov al, 2
+	mov ah, 3
+	mov bl, al
+
+	xor al, ah
+	xor al, bl
+
+	xor ah, bl
+	xor ah, al
 
 ;code here
 

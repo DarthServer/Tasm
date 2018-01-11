@@ -1,6 +1,5 @@
-IDEAL
-MODEL small
-STACK 100h
+.MODEL small
+.STACK 100h
 DATASEG
 ;data
 
@@ -9,8 +8,6 @@ CODESEG
 start:
 	mov ax, @data
 	mov ds, ax
-
-
 ;code here
 
 exit:

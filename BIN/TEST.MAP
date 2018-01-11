@@ -1,2 +1,9 @@
-Fatal: Unable to open file 'test.obj'
+
+ Start  Stop   Length Name               Class
+
+ 00000H 00021H 00022H _TEXT              CODE
+ 00030H 00038H 00009H _DATA              DATA
+ 00040H 0013FH 00100H STACK              STACK
+
+Program entry point at 0000:0000
 
