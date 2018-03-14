@@ -9,8 +9,39 @@ CODESEG
 
 
 toggleStar: ; ah - color, si - pointer to color
-	mov [es : si], dh
+	
+	push bp
+
+	mov bp, sp
+
+	push di
+	push dx
+
+	mov di, [bp + 6]
+	mov dx, [bp + 4]
+
 	mov [es : di], dl
+	inc di
+	mov [es : di], dh
+
+	pop dx
+	pop di
+	pop bp
+	ret
+
+clearCurrentPos:
+	push bp
+
+	mov bp, sp
+
+	push di
+
+	mov di, [bp + 4]
+	mov [es:di], 0
+	inc di
+	mov [es:di], 0
+	pop di
+	pop bp
 	ret
 
 delaySecond:
@@ -36,6 +67,7 @@ getChar:
 	int 21h
 	pop ax
 	ret
+
 isCharAvaliable:
 	push ax
 	mov ah, 1h
@@ -44,86 +76,144 @@ isCharAvaliable:
 	ret
 
 moveLeft:
+	push bp
+
+	mov bp, sp
+
+	push di
+	push ax
+	push bx
+	push dx
+
+	mov di, [bp + 4]
 	mov ax, di
+	mov bx, 160
 	div bx
 	cmp dx, 0
-		jne nxtL
-		ret
-	nxtL:
+		je endML
 	sub di, 2
-	sub si, 2
+	mov [bp + 4], di
+
+	endML:
+	pop dx
+	pop bx
+	pop ax
+	pop di
+	pop bp
 	ret
+
 moveRight:
+	push bp
+
+	mov bp, sp
+
+	push di
+	push ax
+	push bx
+	push dx
+
+	mov di, [bp + 4]
 	mov ax, di
+	mov bx, 160
 	div bx
 	cmp dx, 158
-		jne nxtR
-		ret
-	nxtR:
+		je endMR
 	add di, 2
-	add si, 2
+	mov [bp + 4], di
+	endMR:
+	pop dx
+	pop bx
+	pop ax
+	pop di
+	pop bp
 	ret
+
+
+
 moveUp:
-	push bx
-	mov bx, di
-	sub bx, 160
-	cmp bx, 0
-	jl endMU
+	push bp
+
+	mov bp, sp
+	
+	push di
+
+	mov di, [bp + 4]
 	sub di, 160
-	sub si, 160
+	cmp di, 0
+	jl endMU
+
+	mov [bp + 4], di
 
 	endMU:
 	pop bx
+	pop bp
 	ret
 moveDown:
-	push bx
-	mov bx, di
-	add bx, 160
-	cmp bx, 160 * 25
-	jg endMD
+	push bp
+
+	mov bp, sp
+
+	push di
+
+	mov di, [bp + 4]
 	add di, 160
-	add si, 160
+	cmp di, 160 * 25
+	jg endMD
+
+	mov [bp + 4], di
 
 	endMD:
-	pop bx
+	pop di
+	pop bp
 	ret
 
 processKeypress:
-	push ax
-	push dx
-	mov cl, al
-	mov bx, 160
-	mov ax, 0
-	mov dx, 0
-	cmp cl, 99
-		jnz next
-		call exitProgram
-	next:
-	cmp cl, 97
-		je mvl
-	cmp cl, 100
-		je mvr
-	cmp cl, 119
-		je mvu
-	cmp cl, 115
-		je mvd
-	jmp endMvStr
+	push bp
 
-	mvl:
-		call moveLeft
-		jmp endMvStr
-	mvr:
-		call moveRight
-		jmp endMvStr
-	mvu:
+	mov bp, sp
+
+	push di
+	push cx
+
+	mov cx, [bp + 6]
+	mov di, [bp + 4]
+
+	cmp cl, 99
+	jne nKP
+	call exitProgram
+
+	nKP:
+	push di
+	cmp cl, 119
+	je mvUKP
+	cmp cl, 97
+	je mvLKP
+	cmp cl, 115
+	je mvDKP
+	cmp cl, 100
+	je mvRKP
+	jmp endPK
+
+	mvUKP:
 		call moveUp
-		jmp endMvStr
-	mvd:
+		jmp endPK
+	mvLKP:
+		call moveLeft
+		jmp endPK
+	
+	mvDKP:
 		call moveDown
-		jmp endMvStr
-	endMvStr:
-		pop dx
-		pop ax
+		jmp endPK
+	mvRKP:
+		call moveRight
+		jmp endPK
+
+	endPK:
+		pop di
+		mov [bp + 4], di
+		pop cx
+		pop di
+		pop bp
 	ret
 
 start:
@@ -133,32 +223,35 @@ start:
 	mov es, ax
 
 	mov di, (160) * 12 ; defines initial pointer to star location (center)
-	mov si, di ; defines initial pointer to star color
-	inc si
 	mov dl, '*' ; character
-	mov dh, 100 ; color
-
-	mov [es:di], dl
-	mov [es:si], dh
+	mov dh, 5; color of the char
 ;code here
 
 lp:
-	mov dh, 0
+	mov dh, 5
+	push di
+	push dx
 	call toggleStar
 	call delaySecond
-	mov dh, 5
+	mov dh, 0
+	push di
+	push dx
 	call toggleStar
 	call delaySecond
 
-	mov [byte ptr es:di], 0
-	mov [byte ptr es:si], 0
+	push di
+	call clearCurrentPos
 
 	mov ah, 1
 	int 16h
 	jz lp
 	mov ah, 0
 	int 16h
+	push ax
+	push di
 	call processKeypress
+	pop di
+	pop ax
 	jmp lp
 
 exitProgram:
