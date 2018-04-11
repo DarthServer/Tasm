@@ -4,135 +4,8 @@ STACK 100h
 DATASEG
 ;data
 
-lngth dw 0
-wdth dw 10
-hght dw 10
-indexes dw 0
-
 CODESEG
 ;code
-
-
-drawCollum:
-    ; arguments -> pointer to initial location, lngth
-    push bp
-
-    mov bp, sp
-
-    push di
-    push cx
-    push dx
-
-
-    mov di, [bp + 8] ; pointer 
-    mov cx, [bp + 6] ; length
-    mov dx, [bp + 4] ; colors
-    lpdc:
-        push di
-        push dx
-        call drawChar
-        pop dx
-        call saveLocation
-        pop di
-        add di, 160
-        loop lpdc
-    pop dx
-    pop cx
-    pop di
-    pop bp
-    ret
-
-saveLocation:
-    push bp
-
-    mov bp, sp
-
-    push di
-    push si
-
-    mov di, [bp + 4]
-
-    mov si, offset indexes
-    add si, lngth
-    add si, lngth
-
-    mov [si], di
-
-    inc lngth
-
-    pop si
-    pop di
-    pop bp
-    ret
-
-checkLocation:
-    push bp
-
-    mov bp, sp
-
-    push di
-    push bx
-    push cx
-    push si
-
-    mov di, [bp + 4] ; pointer to location of the star
-
-    mov cx, lngth
-    mov bx, 0
-    mov si, offset indexes
-
-    lpCL:
-        mov bx, [si]
-        cmp di, bx
-        jnz cnt
-        call finalWord
-        cnt:
-        add si, 2
-        loop lpCL
-
-    pop si
-    pop cx
-    pop bx
-    pop di
-    pop bp
-    ret
-drawRec:
-    ; arguments -> pointer to initial location,
-    ; width, height, color
-    push bp
-
-    mov bp, sp
-
-    push di
-    push ax
-    push cx
-    push dx
-
-    mov di, [bp + 10] ; pointer
-    mov cx, [bp + 8] ; width
-    mov ax, [bp + 6] ; height
-    mov dx, [bp + 4] ; color
-
-
-    lpdr:
-        push di
-        push ax
-        push dx
-        call drawCollum
-        pop dx
-        pop ax
-        pop di
-        add di, 2
-        loop lpdr
-
-    pop dx
-    pop cx
-    pop ax
-    pop di
-    pop bp
-    ret
-
-
 drawChar:
     ; arguments -> pointer to location,
     ; and a word where low byte is the char and the high is the color
@@ -355,24 +228,10 @@ start:
 	mov es, ax
     mov di, (170) * 12
 
-    mov dl, '*'
+    mov dl, '+'
     mov dh, 5
 
-    push bx
-    push 170 * 3
-    mov bx, [wdth]
-    push bx
-    mov bx, [hght]
-    push bx
-    mov bl, 'a'
-    mov bh, 8
-    push bx
-    call drawRec
-    pop bx
-    pop bx
-    pop bx
-    pop bx
-    pop bx
+   
 
 
 lp:
@@ -404,36 +263,13 @@ lp:
     push ax
     call processKey
     pop ax
-    call checkLocation
+    ;call checkLocation
     pop di
 
     ; end block
 
 
     jmp lp
-
-finalWord:
-    mov [byte ptr lngth], 0
-    push bx
-    push 170 * 3
-    mov bx, [wdth]
-    push bx
-    mov bx, [hght]
-    push bx
-    mov bl, 'a'
-    mov bh, 15
-    push bx
-    call drawRec
-    pop bx
-    pop bx
-    pop bx
-    pop bx
-    pop bx
-
-    call exitProgram
-    ret
-
-
 exitProgram:
 	mov ax, 4c00h
 	int 21h
