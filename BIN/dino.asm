@@ -1,17 +1,29 @@
 IDEAL
-MODEL small
+MODEL large
 STACK 200h
 DATASEG
 ;data
 
-player db '  * '
-db ' ** '
-db ' ** '
-db ' ** '
-db '****'
-time_counter dw 0
+time_counter1 dw 0
+time_counter2 dw 0
 
+player_sprite db '******'
+db '*    *'
+db '*    *'
+db '******'
+player_action db 0
 player_location dw 0
+
+player_target_location dw 0
+player_velocity db 0
+
+obstacle_sprite db '   *'
+db '* **'
+db '* * '
+db '*** '
+db ' ** '
+db ' ** '
+db ' ** '
 
 obstacle_counter db 0
 obstacle_length db 0
@@ -19,14 +31,42 @@ obstacle_lcations dw 0
 CODESEG
 ;code
 
+
+
 update_timer:
     push bx
+    push dx
+    push di
+    push si
 
-    mov bx, offset time_counter
+    mov si, [player_location]
+    mov di, offset player_sprite
+    mov al, 6
+    mov ah, 4
+
+    mov bx, offset time_counter1
+    
     inc [word ptr bx]
+    next1up:
+    cmp [word ptr bx], 0FFFFh
+    jne contup
+    jne next1up
+    push si
+    push di
+    push ax
+    call draw_ascii_sprite
+    add bx, 2
+    inc [word ptr bx]
+    cmp [word ptr bx], 01Fh
+    jne contup
+    call clear_screen
 
+    contup:
+    pop si
+    pop di
+    pop dx
     pop bx
-    ret     
+    ret
 
 clear_screen:
     push di
@@ -124,9 +164,9 @@ draw_ascii_sprite:
 
     ; extracts width and height
     mov cx, 0
-    mov cl, ah
+    mov cl, ah ; height
     mov dx, 0
-    mov dl, al 
+    mov dl, al ; width
 
     ; defines char and color
     mov bx, 0
@@ -150,25 +190,50 @@ draw_ascii_sprite:
     pop bp
     ret 6
 
+move_sprite_up:
+    push bp
+    mov bp, sp
+    push di
+    mov di, [bp + 4]
+    sub di, 160
+    cmp di, 0
+    jge endmu
+    mov di, 0
+    endmu:
+    mov [bp + 4], di
+    pop di
+    pop bp
+    ret 
+
 start:
 	mov ax, @data
 	mov ds, ax
     mov ax, 0b800h
     mov es, ax
 
-    call clear_screen
+    ; call clear_screen
 
-    mov bx, offset player
-    mov di, 3200
-    mov al, 4
-    mov ah, 5
-    push di
-    push bx
-    push ax
-    call draw_ascii_sprite
+    ; mov bx, offset player_sprite
+    ; mov di, 2500
+    ; mov al, 6
+    ; mov ah, 4
+    ; push di
+    ; push bx
+    ; push ax
+    ; call draw_ascii_sprite
+
+
+    ; call clear_screen
+    lp:
+    call update_timer
+    jmp lp
 
 ;code here
 
+exitProgram:
+    mov ax, 4c00h
+    int 21h
+    ret 
 exit:
 	mov ax, 4c00h
 	int 21h
