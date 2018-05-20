@@ -43,6 +43,86 @@ obstacle_locations dw 7 dup(0)
 CODESEG
 ;code
 
+check_1d_collision:
+    ; checks for 
+    ; t == t'
+    ; t' < t && t'+ b >= t
+    ; t < t' && t + a >= t'
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+
+    mov ax, [bp + 6] ; lb - t , hb - a 
+    mov bx, [bp + 4] ; lb - t', hb - b
+
+    cmp al, bl
+    jz positive_result
+    jg checktt
+    
+    add al, ah
+    cmp al, bl
+    jle negative_result
+    jmp positive_result
+
+    checktt:
+    add bl, bh
+    cmp bl, al
+    jle negative_result
+    jmp positive_result
+
+
+    positive_result:
+    mov [bp + 6], 1
+    jmp end_c1dc
+
+    negative_result:
+    mov [bp + 6], 0
+
+    end_c1dc:
+    pop bx
+    pop ax
+    pop bp
+    ret 2
+
+check_2d_collision:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov ax, [bp + 10]; lb - x, hb - w
+    mov bx, [bp + 8]; lb - y, hb - h
+    mov cx, [bp + 6]; lb -x', hb - w'
+    mov dx, [bp + 4]; lb -y', hb - h'
+
+    push ax
+    push cx
+    call check_1d_collision
+    pop ax
+
+    push cx
+    push dx
+    call check_1d_collision
+    pop cx
+
+
+    cmp ax, 1
+    jnz zero
+    cmp cx, 1
+    jnz zero
+    mov [bp + 10], 1
+    zero:
+    mov [bp + 10], 0
+    pop cx
+    pop bx
+    pop ax
+    ret 2
+
 create_obstacle:
     push bx
     push cx
@@ -521,18 +601,21 @@ start:
     mov ax, 0b800h
     mov es, ax
 
-    call clear_screen
+    ; call clear_screen
 
-    lp:
-    call update_timer
-    jmp lp
+    ; lp:
+    ; call update_timer
+    ; jmp lp
 
-    ; mov bx, offset obstacle_locations
-    ; call create_obstacle
-    ; push bx
-    ; call draw_obstacle
-    ; call draw_player
-    ; jmp exit
+    mov al, 5
+    mov ah, 3
+    mov bl, 1
+    mov bh, 2
+    push ax
+    push bx
+    call check_1d_collision
+    pop ax
+
 exitProgram:
     mov ax, 4c00h
     int 21h
