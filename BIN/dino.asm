@@ -1,47 +1,154 @@
 IDEAL
 MODEL small
-STACK 200h
+STACK 100h
 DATASEG
 ;data
 
 exit_flag db 0
 
-time_counter1 dw 0
-time_counter2 dw 0
+update_player_timer dw 0
+update_obstacles_timer dw 0
+create_obstacles_timer dw 0
+create_obstacles_timeout dw 0
 
 player_x db 5
-player_y db 16
+player_y db 20
 
 player_velocity db 1
 
-player_high_y db 10
-player_low_y db 16 
+player_high_y db 8
+player_low_y db 20 
+
+player_up_tiemout db 3
 
 player_target_y db 10
 
 player_width db 3
 player_height db 2
-
 player_sprite db '****'
 db '****'
 db '****'
 player_up_timer db 0 
 
 empty_line db '                                                                 '
-
-obstacle_sprite db '   *'
-db '* **'
-db '* * '
-db '*** '
-db ' ** '
-db ' ** '
-db ' ** '
-
-obstacle_counter db 0
-obstacle_length db 0
-obstacle_lcations dw 0 
+obstacle_sprite db '**'
+db '**'
+db '**'
+db '**'
+obstacle_width db 2
+obstacle_height db 4
+obstacle_x db 60
+obstacle_y db 18
+obstacle_locations dw 7 dup(0)
 CODESEG
 ;code
+
+create_obstacle:
+    push bx
+    push cx
+    push dx
+
+    mov bx, offset obstacle_locations
+
+    mov dl, [obstacle_x]
+    mov dh, [obstacle_y]
+    push dx
+    call xy_to_pointer
+    pop dx
+    mov cx, 7
+    lp_co:
+    cmp [word ptr bx], 0
+    jnz lp_co1
+    mov [word ptr bx], dx
+    jmp end_co
+    lp_co1:
+    add bx, 2
+    loop lp_co
+
+    end_co:
+    pop dx
+    pop cx
+    pop bx
+    ret 
+
+clear_obstacle:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push di
+
+    mov di, [bp + 4]
+    mov ax, [di]; pointer
+    mov bl, [obstacle_width]
+    mov bh, [obstacle_height]
+    push ax
+    push bx
+    call clear_sprite
+
+    pop di
+    pop bx
+    pop ax
+    pop bp
+    ret 2
+
+move_obstacle:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+
+    mov bx, [bp + 4]; pointer to location
+
+    mov ax, [word ptr bx]
+    push ax
+    call pointer_to_xy
+    pop ax
+
+    dec al
+    cmp al, 0
+    jnge end_mo_zero
+    push ax
+    call xy_to_pointer
+    pop ax
+    mov [word ptr bx], ax 
+    jmp end_mo
+    end_mo_zero:
+    mov [word ptr bx], 0h
+    end_mo:
+    pop bx
+    pop ax
+    pop bp
+    ret 2
+
+update_obstacles:
+    push ax
+    push bx
+    push cx
+
+    mov bx, offset obstacle_locations
+    mov cx, 7
+
+    lp_uo:
+    cmp [word ptr bx], 0h
+    jz cond_lpuo
+    push bx
+    call clear_obstacle
+    push bx
+    call move_obstacle
+    push bx
+    call draw_obstacle
+    cond_lpuo:
+    add bx, 2
+    loop lp_uo
+
+    uo_end:
+    pop cx
+    pop bx
+    pop ax
+    ret
 
 move_player_up:
     push ax
@@ -53,7 +160,7 @@ move_player_up:
     jne mp_change_y
     inc [player_up_timer]
     mov al, [player_up_timer]
-    cmp al, 5
+    cmp al, [player_up_tiemout]
     jle end_mp_up
     mov [player_velocity], 2
     jmp end_mp_up
@@ -62,6 +169,7 @@ move_player_up:
     end_mp_up:
     pop ax
     ret
+
 move_player_down:
     push ax
 
@@ -119,19 +227,29 @@ update_player:
 update_timer:
     push bx
 
-    mov bx, offset time_counter1
-    
+    mov bx, offset update_player_timer
+    inc [word ptr bx]
+    cmp [word ptr bx], 0F00h
+    jne ut_cont1
+    call update_player
+    mov [word ptr bx], 0
+    ut_cont1:
+    mov bx, offset update_obstacles_timer
+    inc [word ptr bx]
+    cmp [word ptr bx], 0F00h
+    jne ut_cont2
+    call update_obstacles
+    mov [word ptr bx], 0
+    ut_cont2:
+    mov bx, offset create_obstacles_timer
     inc [word ptr bx]
     cmp [word ptr bx], 0FFFFh
-    jne contup
-    call update_player
-    mov bx, offset time_counter2
-    inc [word ptr bx]
-    cmp [word ptr bx], 001h
-    jne contup
-    ;call exitProgram
-    ;call update_player 
-    contup:
+    jne ut_cont3
+    call create_obstacle
+    mov [word ptr bx], 0
+    ut_cont3:
+    
+    ut_end:
     pop bx
     ret
 
@@ -150,12 +268,14 @@ pointer_to_xy:
 
     div cx
 
-    mov bl, al
+    mov bh, al
 
     mov cl, 2
     mov al, dl
     div cl
-    mov bh, al
+    mov bl, al
+
+    ; result -> lb - x, hb - y
 
     mov [bp + 4], bx 
 
@@ -349,6 +469,31 @@ draw_ascii_sprite:
     pop bp
     ret 6
 
+draw_obstacle:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+
+    mov bx, [bp + 4]; pointer to obstacle location in video memory
+    mov ax, [bx]
+    push ax
+
+    mov ax, offset obstacle_sprite
+    push ax
+
+    mov al, [obstacle_width]
+    mov ah, [obstacle_height]
+    push ax
+
+    call draw_ascii_sprite
+
+    pop bx
+    pop ax
+    pop bp
+    ret 2
+
 draw_player:
     push ax
 
@@ -376,12 +521,18 @@ start:
     mov ax, 0b800h
     mov es, ax
 
-    ;call clear_screen
+    call clear_screen
 
     lp:
     call update_timer
     jmp lp
 
+    ; mov bx, offset obstacle_locations
+    ; call create_obstacle
+    ; push bx
+    ; call draw_obstacle
+    ; call draw_player
+    ; jmp exit
 exitProgram:
     mov ax, 4c00h
     int 21h
