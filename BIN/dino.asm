@@ -39,7 +39,7 @@ obstacle_width db 2
 obstacle_height db 4
 obstacle_x db 60
 obstacle_y db 18
-obstacle_locations dw 7 dup(0)
+obstacle_locations dw 10 dup(0)
 CODESEG
 ;code
 
@@ -122,6 +122,32 @@ check_2d_collision:
     pop bx
     pop ax
     ret 2
+
+check_obstacle_player_collision:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push si
+    mov di, [bp + 4] ; pointer to obstacle location pointer
+
+    mov si, [di]
+
+    
+
+
+    pop si
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret
 
 create_obstacle:
     push bx
@@ -558,6 +584,10 @@ draw_obstacle:
 
     mov bx, [bp + 4]; pointer to obstacle location in video memory
     mov ax, [bx]
+
+    cmp ax, 0h
+    jz end_do
+
     push ax
 
     mov ax, offset obstacle_sprite
@@ -569,6 +599,7 @@ draw_obstacle:
 
     call draw_ascii_sprite
 
+    end_do:
     pop bx
     pop ax
     pop bp
@@ -601,20 +632,12 @@ start:
     mov ax, 0b800h
     mov es, ax
 
-    ; call clear_screen
+    call clear_screen
 
-    ; lp:
-    ; call update_timer
-    ; jmp lp
+    lp:
+    call update_timer
+    jmp lp
 
-    mov al, 5
-    mov ah, 3
-    mov bl, 1
-    mov bh, 2
-    push ax
-    push bx
-    call check_1d_collision
-    pop ax
 
 exitProgram:
     mov ax, 4c00h
