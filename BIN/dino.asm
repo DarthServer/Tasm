@@ -4,17 +4,18 @@ STACK 100h
 DATASEG
 ;data
 
-exit_flag db 0
+running_flag dw 0
 
 update_player_timer dw 0
 update_obstacles_timer dw 0
 create_obstacles_timer dw 0
+create_obstacles_timer_2 dw 0
 create_obstacles_timeout dw 0
 
 player_x db 5
 player_y db 20
 
-player_velocity db 1
+player_velocity db 0
 
 player_high_y db 8
 player_low_y db 20 
@@ -43,6 +44,54 @@ obstacle_locations dw 10 dup(0)
 CODESEG
 ;code
 
+clear_keyboard_buffer:
+    push ax
+
+    mov ah, 08h
+    int 21h
+
+    pop ax
+    ret
+
+update_io:
+
+    push ax
+
+    mov ax, 0
+    mov ah, 01h
+
+    int 16h
+    jz exit_io
+
+    mov ah, 00h
+    int 16h
+
+    cmp al, 119
+    je move_up_io
+
+    cmp al, 115
+    je move_down_io
+
+    jmp exit_io
+
+    move_up_io:
+    cmp [player_velocity], 1
+    je exit_io
+    cmp [player_velocity], 2
+    je exit_io
+    mov [player_velocity], 1
+    jmp exit_io
+
+    move_down_io:
+    cmp [player_velocity], 0
+    je exit_io
+    mov [player_velocity], 2
+    mov [player_up_timer], 0
+
+    exit_io:
+    pop ax
+    ret
+
 check_1d_collision:
     ; checks for 
     ; t == t'
@@ -63,13 +112,13 @@ check_1d_collision:
     
     add al, ah
     cmp al, bl
-    jle negative_result
+    jl negative_result
     jmp positive_result
 
     checktt:
     add bl, bh
     cmp bl, al
-    jle negative_result
+    jl negative_result
     jmp positive_result
 
 
@@ -105,23 +154,27 @@ check_2d_collision:
     call check_1d_collision
     pop ax
 
-    push cx
+    push bx
     push dx
     call check_1d_collision
-    pop cx
+    pop bx
 
 
     cmp ax, 1
     jnz zero
-    cmp cx, 1
+    cmp bx, 1
     jnz zero
-    mov [bp + 10], 1
+    mov [word ptr bp + 10], 1
+    jmp end_c2dc
     zero:
-    mov [bp + 10], 0
+    mov [word ptr bp + 10], 0
+    end_c2dc:
+    pop dx
     pop cx
     pop bx
     pop ax
-    ret 2
+    pop bp
+    ret 6
 
 check_obstacle_player_collision:
     push bp
@@ -130,24 +183,46 @@ check_obstacle_player_collision:
     push ax
     push bx
     push cx
-    push dx
     push di
-    push si
     mov di, [bp + 4] ; pointer to obstacle location pointer
 
-    mov si, [di]
+    mov cx, [di] ; pointer to obstacle in video memory
 
-    
+    mov al, [player_x]
+    mov ah, [player_width]
 
+    mov bl, [player_y]
+    mov bh, [player_height]
 
-    pop si
+    push ax
+    push bx
+
+    push cx
+    call pointer_to_xy
+    pop cx
+
+    mov al, cl
+    mov ah, [obstacle_width]
+
+    mov bl, ch
+    mov bh, [obstacle_height]
+
+    push ax
+    push bx
+
+    call check_2d_collision
+    pop ax
+
+    cmp ax, 1
+    jnz end_copdc
+    call end_game
+    end_copdc:
     pop di
-    pop dx
     pop cx
     pop bx
     pop ax
     pop bp
-    ret
+    ret 2
 
 create_obstacle:
     push bx
@@ -246,6 +321,8 @@ update_obstacles:
     call move_obstacle
     push bx
     call draw_obstacle
+    push bx
+    call check_obstacle_player_collision
     cond_lpuo:
     add bx, 2
     loop lp_uo
@@ -333,16 +410,18 @@ update_player:
 update_timer:
     push bx
 
+    
     mov bx, offset update_player_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 0F00h
+    cmp [word ptr bx], 0FFFh
     jne ut_cont1
     call update_player
+    call update_io
     mov [word ptr bx], 0
     ut_cont1:
     mov bx, offset update_obstacles_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 0F00h
+    cmp [word ptr bx], 0E00h
     jne ut_cont2
     call update_obstacles
     mov [word ptr bx], 0
@@ -351,8 +430,13 @@ update_timer:
     inc [word ptr bx]
     cmp [word ptr bx], 0FFFFh
     jne ut_cont3
+    mov bx, offset create_obstacles_timer_2
+    inc [word ptr bx]
+    cmp [word ptr bx], 4
+    jne ut_cont3
     call create_obstacle
-    mov [word ptr bx], 0
+    mov [byte ptr create_obstacles_timer], 0
+    mov [word ptr create_obstacles_timer_2], 0
     ut_cont3:
     
     ut_end:
@@ -636,8 +720,13 @@ start:
 
     lp:
     call update_timer
-    jmp lp
+    cmp [running_flag], 0
+    jz lp
+    jmp exit
 
+end_game:
+    call exitProgram
+    ret
 
 exitProgram:
     mov ax, 4c00h
