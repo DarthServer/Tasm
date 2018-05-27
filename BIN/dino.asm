@@ -9,8 +9,12 @@ running_flag dw 0
 update_player_timer dw 0
 update_obstacles_timer dw 0
 create_obstacles_timer dw 0
-create_obstacles_timer_2 dw 0
-create_obstacles_timeout dw 0
+create_obstacles_timer_2 db 0
+create_obstacles_timeout db 1
+
+welcome_string_message db 'Welcome To Dino, Press Any Key To Start The Game'
+
+score dw 0
 
 player_x db 5
 player_y db 20
@@ -41,8 +45,138 @@ obstacle_height db 4
 obstacle_x db 60
 obstacle_y db 18
 obstacle_locations dw 10 dup(0)
+
+obstalce_spaw_time_counter db 0
+obstacle_spawn_times db 5, 3, 9, 3, 6, 2, 6, 8, 3, 7, 5, 3
+
+score_string db 10 dup(30h)
+
 CODESEG
 ;code
+
+draw_text_line:
+
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 8] ; pointer to initial location in video memory
+    mov bx, [bp + 6] ; offset of string in the memory
+    mov ax, [bp + 4] ; lb - color of the text
+
+    dtl_lp:
+    mov cl, [bx]
+    mov [di], cl
+    inc di
+    mov [di], al
+    inc di
+    inc bx
+    cmp [byte ptr bx], '$'
+    jnz dtl_lp
+
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 6
+
+
+number_to_string:
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    mov di, 10 ; devider 
+
+    mov bx, [bp + 6] ; offset of last memory location of string
+    mov ax, [bp + 4] ; the number that needs to be converted into string
+
+    mov dx, 0
+
+    strnum_lp:
+
+    div di
+    add dl, 30h
+    mov [bx], dl
+    mov dx, 0
+    dec bx
+    cmp ax, 0
+    jnz strnum_lp
+
+    mov bx, offset score_string
+    add bx, 10
+    inc bx
+    mov [byte ptr bx], '$'
+
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+
+update_score:
+    push ax
+
+    inc [word ptr score]
+
+    mov ax, offset score
+
+    push ax
+
+    mov ax, [score]
+
+    push ax
+
+    call number_to_string
+
+    mov ax, offset score_string
+
+    push ax
+
+    mov ax, 0
+
+    push ax
+
+    call draw_text_line
+
+    pop ax
+    ret
+
+update_spawn_time:
+    push ax
+    push bx
+
+    mov ax, 0
+    inc [obstalce_spaw_time_counter]
+    cmp [obstalce_spaw_time_counter], 12
+    jl next_ust
+    mov [obstalce_spaw_time_counter], 0
+    next_ust:
+    mov al, [obstalce_spaw_time_counter]
+    mov bx, offset obstacle_spawn_times
+    add bx, ax
+    mov al, [bx]
+    mov [create_obstacles_timeout], al
+    end_ust:
+    pop bx
+    pop ax
+    ret
 
 clear_keyboard_buffer:
     push ax
@@ -409,7 +543,7 @@ update_player:
 
 update_timer:
     push bx
-
+    push cx
     
     mov bx, offset update_player_timer
     inc [word ptr bx]
@@ -428,19 +562,22 @@ update_timer:
     ut_cont2:
     mov bx, offset create_obstacles_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 0FFFFh
+    cmp [word ptr bx], 00FFFh
     jne ut_cont3
     mov bx, offset create_obstacles_timer_2
-    inc [word ptr bx]
-    cmp [word ptr bx], 4
+    inc [byte ptr bx]
+    mov cl, [create_obstacles_timeout]
+    cmp [byte ptr bx], cl
     jne ut_cont3
     call create_obstacle
-    mov [byte ptr create_obstacles_timer], 0
-    mov [word ptr create_obstacles_timer_2], 0
+    mov [create_obstacles_timer], 0
+    mov [create_obstacles_timer_2], 0
+    call update_spawn_time
     ut_cont3:
     
     ut_end:
     pop bx
+    pop cx
     ret
 
 pointer_to_xy:
