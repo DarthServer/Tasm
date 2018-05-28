@@ -6,15 +6,18 @@ DATASEG
 
 running_flag dw 0
 
+score_screen_location dw 0
+
 update_player_timer dw 0
 update_obstacles_timer dw 0
 create_obstacles_timer dw 0
 create_obstacles_timer_2 db 0
 create_obstacles_timeout db 1
+update_score_timer dw 0
 
 welcome_string_message db 'Welcome To Dino, Press Any Key To Start The Game'
 
-score dw 0
+score dw 123
 
 player_x db 5
 player_y db 20
@@ -47,7 +50,7 @@ obstacle_y db 18
 obstacle_locations dw 10 dup(0)
 
 obstalce_spaw_time_counter db 0
-obstacle_spawn_times db 5, 3, 9, 3, 6, 2, 6, 8, 3, 7, 5, 3
+obstacle_spawn_times db 5, 3, 9, 3, 6, 1, 7, 3, 7, 1, 5, 3
 
 score_string db 10 dup(30h)
 
@@ -70,14 +73,16 @@ draw_text_line:
     mov ax, [bp + 4] ; lb - color of the text
 
     dtl_lp:
+    push di
     mov cl, [bx]
-    mov [di], cl
-    inc di
-    mov [di], al
-    inc di
+    mov ch, al
+    push cx
+    call draw_char
+    add di, 2
     inc bx
     cmp [byte ptr bx], '$'
-    jnz dtl_lp
+    jne dtl_lp
+    
 
 
     pop di
@@ -135,8 +140,8 @@ update_score:
 
     inc [word ptr score]
 
-    mov ax, offset score
-
+    mov ax, offset score_string
+    add ax, 10
     push ax
 
     mov ax, [score]
@@ -145,11 +150,15 @@ update_score:
 
     call number_to_string
 
+    mov ax, 100
+
+    push ax
+
     mov ax, offset score_string
 
     push ax
 
-    mov ax, 0
+    mov al, 10
 
     push ax
 
@@ -574,7 +583,13 @@ update_timer:
     mov [create_obstacles_timer_2], 0
     call update_spawn_time
     ut_cont3:
-    
+    mov bx, offset update_score_timer
+    inc [word ptr bx]
+    cmp [word ptr bx], 0E00h
+    jne ut_end
+    call update_score
+    mov [word ptr bx], 0
+
     ut_end:
     pop bx
     pop cx
