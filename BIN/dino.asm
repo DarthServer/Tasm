@@ -5,6 +5,8 @@ DATASEG
 ;data
 
 running_flag dw 0
+sound_flag dw 0
+win_flag db 0
 
 score_screen_location dw 0h
 
@@ -15,7 +17,14 @@ create_obstacles_timer_2 db 0
 create_obstacles_timeout db 1
 update_score_timer dw 0
 
-welcome_string_message db 'Welcome To Dino, Press Any Key To Start The Game'
+welcome_message_1_string db 'Welcome To Dino, Press Any Key To Start The Game$'
+welcome_message_2_string db 'Avoid The Obstacles That Stand In Your Way$'
+welcome_message_3_string db 'Press W To Jump Over The Obstacles$'
+
+loose_message_string db 'You Lost The Game!!!$'
+win_message_string db 'You Wone The Game!!!$'
+
+restart_message_string db 'Press Any Key To Restart, Press ESC To Exit$'
 
 score dw 0
 
@@ -56,6 +65,37 @@ score_string db 10 dup(30h)
 
 CODESEG
 ;code
+close_sound:
+    in al, 61h
+	and al, 11111100b      
+	out 61h, al              ;turn speaker off
+	ret
+beep:
+    push ax
+    push cx
+    
+    mov al, 0b6h            ; prepare the speaker for change frequency
+	out 43h, al
+
+    mov ax,  0a98h          ;frequency of the note 
+	out 42h, al             ; output low byte
+	mov al,  ah
+	out 42h, al             ; output hight byte (out only from register <al>)
+	in al, 61h              ; port 61h - speaker port
+	or al, 00000011b        ; put two lowest bits as 1 for
+	out 61h, al 
+
+    mov cx, 0FFFFh
+    lp_beep:
+	  
+    loop lp_beep
+
+    call close_sound
+
+    pop cx
+    pop ax
+    ret
+
 
 draw_text_line:
 
@@ -190,7 +230,8 @@ update_spawn_time:
 clear_keyboard_buffer:
     push ax
 
-    mov ah, 08h
+    mov ah,0ch
+    mov al,0
     int 21h
 
     pop ax
@@ -223,6 +264,7 @@ update_io:
     cmp [player_velocity], 2
     je exit_io
     mov [player_velocity], 1
+    call beep
     jmp exit_io
 
     move_down_io:
@@ -232,6 +274,7 @@ update_io:
     mov [player_up_timer], 0
 
     exit_io:
+    ;call clear_keyboard_buffer
     pop ax
     ret
 
@@ -358,7 +401,7 @@ check_obstacle_player_collision:
 
     cmp ax, 1
     jnz end_copdc
-    call end_game
+    mov [running_flag], 1
     end_copdc:
     pop di
     pop cx
@@ -539,6 +582,7 @@ update_player:
     up_next:
     cmp [player_velocity], 2
     jnz up_draw
+    mov [sound_flag], 0
     call move_player_down
     up_draw:
     call draw_player
@@ -564,14 +608,14 @@ update_timer:
     ut_cont1:
     mov bx, offset update_obstacles_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 0E00h
+    cmp [word ptr bx], 0A00h
     jne ut_cont2
     call update_obstacles
     mov [word ptr bx], 0
     ut_cont2:
     mov bx, offset create_obstacles_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 00FFFh
+    cmp [word ptr bx], 0010h
     jne ut_cont3
     mov bx, offset create_obstacles_timer_2
     inc [byte ptr bx]
@@ -585,11 +629,12 @@ update_timer:
     ut_cont3:
     mov bx, offset update_score_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 01000h
-    jne ut_end
+    cmp [word ptr bx], 03000h
+    jne ut_cont4
     call update_score
     mov [word ptr bx], 0
-
+    ut_cont4:
+    
     ut_end:
     pop bx
     pop cx
@@ -862,28 +907,240 @@ draw_player:
     pop ax
     ret
 
+; menu and game-stage releated code 
+
+loose_beep:
+    push cx
+    mov cx, 025
+    beep_lp:
+    call beep
+    loop beep_lp
+    pop cx
+    ret
+
+draw_welcome_screen:
+    push ax
+    push bx
+
+    mov bl, 20
+    mov bh, 15
+
+
+    push bx
+
+    call xy_to_pointer
+
+
+    mov ax, offset welcome_message_1_string
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset welcome_message_2_string
+    push ax
+
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset welcome_message_3_string
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    pop bx
+    pop ax
+    ret
+draw_loose_screen:
+    push ax
+    push bx
+
+    mov bl, 20
+    mov bh, 15
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset loose_message_string
+    push ax
+    
+    mov ax, 3
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset restart_message_string
+
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    pop bx
+    pop ax
+    ret
+draw_win_screen:
+    push ax
+    push bx
+
+    mov bl, 20
+    mov bh, 15
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset win_message_string
+    push ax
+    
+    mov ax, 3
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset restart_message_string
+
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    pop bx
+    pop ax
+    ret
+
+reset_game:
+    push bx
+    push cx
+    mov [create_obstacles_timer], 0
+    mov [create_obstacles_timer_2], 0
+    mov [create_obstacles_timeout], 1
+    mov [update_obstacles_timer], 0
+    mov [update_player_timer], 0
+    mov [update_score_timer], 0
+    mov [player_velocity], 0
+    mov [obstalce_spaw_time_counter], 0
+    mov [score], 0
+    mov [running_flag], 0
+    mov [win_flag], 0
+    mov [sound_flag], 0
+    mov [player_y], 20
+    mov bx, offset obstacle_locations
+    mov cx, 7
+
+    lp_rg:
+    mov [word ptr bx], 0
+    add bx, 2
+    loop lp_rg
+
+    pop cx
+    pop bx
+    ret
+
+game:
+    lp:
+    call update_timer
+    cmp [score], 0FFFFh
+    jz win_game
+    cmp [running_flag], 0
+    jz lp
+    jmp end_game
+    win_game:
+    mov [win_flag], 1
+    end_game:
+    ret
+
+exitProgram:
+    call close_sound
+    mov ax, 4c00h
+    int 21h
+    ret 
+
 start:
 	mov ax, @data
 	mov ds, ax
     mov ax, 0b800h
     mov es, ax
 
+    call beep 
     call clear_screen
+    call draw_welcome_screen
 
-    lp:
-    call update_timer
-    cmp [running_flag], 0
-    jz lp
-    jmp exit
+    lp_welcome:
+    mov ax, 0
+    mov ah, 01h
+    int 16h
+    jz lp_welcome
+    call beep
+    game_label:
+    call clear_screen
+    call game
+    call clear_screen
+    cmp [win_flag], 0
+    jnz draw_win
+    call draw_loose_screen
+    jmp restart_label
+    draw_win:
+    call draw_win_screen
+    restart_label:
+    mov ax, 0
+    mov ah, 01h
+    restart_loop:
+    int 16h
+    jz restart_loop
+    mov ah, 00h
+    int 16h
+    cmp ah, 01h
+    je exit
+    mov ax, 0
+    mov ah, 01h 
+    call reset_game
+    jmp game_label
 
-end_game:
-    call exitProgram
-    ret
+    
 
-exitProgram:
-    mov ax, 4c00h
-    int 21h
-    ret 
 exit:
 	mov ax, 4c00h
 	int 21h
