@@ -17,9 +17,18 @@ create_obstacles_timer_2 db 0
 create_obstacles_timeout db 1
 update_score_timer dw 0
 
+screen_text_initial_x db 5
+screen_text_initial_y db 12
+
 welcome_message_1_string db 'Welcome To Dino, Press Any Key To Start The Game$'
-welcome_message_2_string db 'Avoid The Obstacles That Stand In Your Way$'
-welcome_message_3_string db 'Press W To Jump Over The Obstacles$'
+welcome_message_2_string db 'Press H to view the help menu$'
+welcome_message_4_string db 'Press ESC to exit$'
+welcome_message_3_string db 'Press Any other key to start the game$'
+
+help_message_1_string db 'The Objective Of The Game Is To Avoid The Obstacles$'
+help_message_2_string db 'Press W to jump over the obstacles$'
+help_message_3_string db 'If you touch an obstacle you loose$'
+help_message_4_string db 'If you reach a score of a 1000 you win$'
 
 loose_message_string db 'You Lost The Game!!!$'
 win_message_string db 'You Wone The Game!!!$'
@@ -122,8 +131,6 @@ draw_text_line:
     inc bx
     cmp [byte ptr bx], '$'
     jne dtl_lp
-    
-
 
     pop di
     pop cx
@@ -629,7 +636,7 @@ update_timer:
     ut_cont3:
     mov bx, offset update_score_timer
     inc [word ptr bx]
-    cmp [word ptr bx], 03000h
+    cmp [word ptr bx], 0F000h
     jne ut_cont4
     call update_score
     mov [word ptr bx], 0
@@ -922,8 +929,8 @@ draw_welcome_screen:
     push ax
     push bx
 
-    mov bl, 20
-    mov bh, 15
+    mov bl, [screen_text_initial_x]
+    mov bh, [screen_text_initial_y]
 
 
     push bx
@@ -971,6 +978,20 @@ draw_welcome_screen:
 
     call draw_text_line
 
+    inc bh
+    
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset welcome_message_4_string
+    push ax
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
     pop bx
     pop ax
     ret
@@ -978,8 +999,8 @@ draw_loose_screen:
     push ax
     push bx
 
-    mov bl, 20
-    mov bh, 15
+    mov bl, [screen_text_initial_x]
+    mov bh, [screen_text_initial_y]
 
     push bx
 
@@ -1016,8 +1037,8 @@ draw_win_screen:
     push ax
     push bx
 
-    mov bl, 20
-    mov bh, 15
+    mov bl, [screen_text_initial_x]
+    mov bh, [screen_text_initial_y]
 
     push bx
 
@@ -1045,6 +1066,76 @@ draw_win_screen:
 
     push ax
 
+    call draw_text_line
+
+    pop bx
+    pop ax
+    ret
+
+draw_help_screen:
+    push ax
+    push bx
+
+    mov bl, [screen_text_initial_x]
+    mov bh, [screen_text_initial_y]
+
+
+    push bx
+
+    call xy_to_pointer
+
+
+    mov ax, offset help_message_1_string
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset help_message_2_string
+    push ax
+
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+
+    mov ax, offset help_message_3_string
+    push ax
+
+    mov ax, 3
+
+    push ax
+
+    call draw_text_line
+
+    inc bh
+
+    push bx
+
+    call xy_to_pointer
+    
+    mov ax, offset help_message_4_string
+    push ax
+
+    mov ax, 3
+    push ax
     call draw_text_line
 
     pop bx
@@ -1082,7 +1173,7 @@ reset_game:
 game:
     lp:
     call update_timer
-    cmp [score], 0FFFFh
+    cmp [score], 01000
     jz win_game
     cmp [running_flag], 0
     jz lp
@@ -1104,6 +1195,8 @@ start:
     mov ax, 0b800h
     mov es, ax
 
+    draw_welcome:
+    call clear_keyboard_buffer
     call beep 
     call clear_screen
     call draw_welcome_screen
@@ -1113,6 +1206,12 @@ start:
     mov ah, 01h
     int 16h
     jz lp_welcome
+    mov ah, 00h
+    int 16h
+    cmp ah, 23h
+    je help_screen
+    cmp ah, 01h
+    je exit
     call beep
     game_label:
     call clear_screen
@@ -1138,6 +1237,16 @@ start:
     mov ah, 01h 
     call reset_game
     jmp game_label
+
+    help_screen:
+    call clear_screen
+    call draw_help_screen
+    mov ax, 0
+    mov ah, 01h
+    help_loop:
+    int 16h
+    jz help_loop
+    jmp draw_welcome
 
     
 
