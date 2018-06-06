@@ -115,34 +115,7 @@ number_to_string:
     pop bp
     ret 4
 
-; this function plays a short sound
-beep:
-    push ax
-    push cx
-    
-    mov al, 0b6h            ; prepare the speaker for change frequency
-	out 43h, al
 
-    mov ax,  0a98h          ;frequency of the note 
-	out 42h, al             ; output low byte
-	mov al,  ah
-	out 42h, al             ; output hight byte (out only from register <al>)
-	in al, 61h              ; port 61h - speaker port
-	or al, 00000011b        ; put two lowest bits as 1 for
-	out 61h, al 
-
-    mov cx, 0FFFFh
-    lp_beep:
-	  
-    loop lp_beep
-
-    in al, 61h
-	and al, 11111100b      
-	out 61h, al   
-
-    pop cx
-    pop ax
-    ret
 
 ; this function is responsible for converting a given pointer to a char in video memory 
 pointer_to_xy:
@@ -215,50 +188,6 @@ xy_to_pointer:
     pop ax
     pop bp
     ret
-
-; this function is responsible for drawing empty char in place of an ascii sprite
-clear_sprite:
-    push bp
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-
-    mov ax, [bp + 6] ; screen location
-    mov bx, offset empty_line
-    mov cx, [bp + 4] ; width and height
-    
-
-    push ax
-    push bx
-    push cx
-    call draw_ascii_sprite 
-
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
-; this function is responsible for clearing the entire video memory
-clear_screen:
-    push di
-    push cx
-
-    mov di, 0
-    mov cx, 160*25
-
-    lp_cls:
-    push di
-    push 0000
-    call draw_char
-    add di, 2
-    loop lp_cls
-
-    pop cx
-    pop di
-    ret 
 
 ; this function draws one character to the video screen.
 draw_char:
@@ -435,6 +364,79 @@ draw_menu_screen:
     pop ax
     pop bp
     ret 8
+
+; this function is responsible for drawing empty char in place of an ascii sprite
+clear_sprite:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+
+    mov ax, [bp + 6] ; screen location
+    mov bx, offset empty_line
+    mov cx, [bp + 4] ; width and height
+    
+
+    push ax
+    push bx
+    push cx
+    call draw_ascii_sprite 
+
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function is responsible for clearing the entire video memory
+clear_screen:
+    push di
+    push cx
+
+    mov di, 0
+    mov cx, 160*25
+
+    lp_cls:
+    push di
+    push 0000
+    call draw_char
+    add di, 2
+    loop lp_cls
+
+    pop cx
+    pop di
+    ret 
+
+; this function plays a short sound
+beep:
+    push ax
+    push cx
+    
+    mov al, 0b6h            ; prepare the speaker for change frequency
+	out 43h, al
+
+    mov ax,  0a98h          ;frequency of the note 
+	out 42h, al             ; output low byte
+	mov al,  ah
+	out 42h, al             ; output hight byte (out only from register <al>)
+	in al, 61h              ; port 61h - speaker port
+	or al, 00000011b        ; put two lowest bits as 1 for
+	out 61h, al 
+
+    mov cx, 0FFFFh
+    lp_beep:
+	  
+    loop lp_beep
+
+    in al, 61h
+	and al, 11111100b      
+	out 61h, al   
+
+    pop cx
+    pop ax
+    ret
 
 ; this function increases the score, converts it to string and draws it to string.
 update_score:
