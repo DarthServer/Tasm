@@ -75,143 +75,6 @@ score_string db 5 dup(30h)
 CODESEG
 ;code
 
-; this function plays a short sound
-beep:
-    push ax
-    push cx
-    
-    mov al, 0b6h            ; prepare the speaker for change frequency
-	out 43h, al
-
-    mov ax,  0a98h          ;frequency of the note 
-	out 42h, al             ; output low byte
-	mov al,  ah
-	out 42h, al             ; output hight byte (out only from register <al>)
-	in al, 61h              ; port 61h - speaker port
-	or al, 00000011b        ; put two lowest bits as 1 for
-	out 61h, al 
-
-    mov cx, 0FFFFh
-    lp_beep:
-	  
-    loop lp_beep
-
-    in al, 61h
-	and al, 11111100b      
-	out 61h, al   
-
-    pop cx
-    pop ax
-    ret
-
-; this function draws a string of charactes to the screen
-draw_text_line:
-
-    push bp
-
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push di
-
-    mov di, [bp + 8] ; pointer to initial location in video memory
-    mov bx, [bp + 6] ; offset of string in the memory
-    mov ax, [bp + 4] ; lb - color of the text
-
-    dtl_lp:
-    push di
-    mov cl, [bx]
-    mov ch, al
-    push cx
-    call draw_char
-    add di, 2
-    inc bx
-    cmp [byte ptr bx], '$'
-    jne dtl_lp
-
-
-    mov [bp + 8], bx ; returns the end pointer.
-
-    pop di
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
-; this function draws a "menu_screen" to the screen using draw_text_line
-draw_menu_screen:
-    push bp
-    mov bp, sp
-    push ax
-    push bx
-    push cx
-    push di
-
-    mov di, [bp + 10] ; location in video memory where the screen should be drawn
-    mov bx, [bp + 8] ; offset of the screen in memory
-    mov cx, [bp + 6] ; number of lines that should be drawn
-    mov ax, [bp + 4] ; the color the screen should be 
-
-    lp_dsc:
-    push di
-    push bx
-    push ax
-    call draw_text_line
-    pop bx
-    inc bx
-    add di, 160
-    loop lp_dsc
-
-    pop di
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 8
-
-; this function converts a given 16 bit number to a string that is saved in the memory
-number_to_string:
-    push bp
-
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-
-    mov di, 10 ; devider - decimal number system
-
-    mov bx, [bp + 6] ; offset of last memory location of string
-    mov ax, [bp + 4] ; the number that needs to be converted into string
-
-    mov dx, 0
-
-    strnum_lp:
-    div di
-    add dl, 30h
-    mov [bx], dl
-    mov dx, 0
-    dec bx
-    cmp ax, 0
-    jnz strnum_lp
-
-    mov bx, [bp + 6] ; getting original pointer
-    inc bx
-    mov [byte ptr bx], '$'; closing the string with a separator character
-
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
 ; this function increases the score, converts it to string and draws it to string.
 update_score:
     push ax
@@ -702,6 +565,76 @@ update_timer:
     pop cx
     ret
 
+
+; this function converts a given 16 bit number to a string that is saved in the memory
+number_to_string:
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    mov di, 10 ; devider - decimal number system
+
+    mov bx, [bp + 6] ; offset of last memory location of string
+    mov ax, [bp + 4] ; the number that needs to be converted into string
+
+    mov dx, 0
+
+    strnum_lp:
+    div di
+    add dl, 30h
+    mov [bx], dl
+    mov dx, 0
+    dec bx
+    cmp ax, 0
+    jnz strnum_lp
+
+    mov bx, [bp + 6] ; getting original pointer
+    inc bx
+    mov [byte ptr bx], '$'; closing the string with a separator character
+
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function plays a short sound
+beep:
+    push ax
+    push cx
+    
+    mov al, 0b6h            ; prepare the speaker for change frequency
+	out 43h, al
+
+    mov ax,  0a98h          ;frequency of the note 
+	out 42h, al             ; output low byte
+	mov al,  ah
+	out 42h, al             ; output hight byte (out only from register <al>)
+	in al, 61h              ; port 61h - speaker port
+	or al, 00000011b        ; put two lowest bits as 1 for
+	out 61h, al 
+
+    mov cx, 0FFFFh
+    lp_beep:
+	  
+    loop lp_beep
+
+    in al, 61h
+	and al, 11111100b      
+	out 61h, al   
+
+    pop cx
+    pop ax
+    ret
+
 ; this function is responsible for converting a given pointer to a char in video memory 
 pointer_to_xy:
     push bp
@@ -924,6 +857,75 @@ draw_ascii_sprite:
     pop di
     pop bp
     ret 6
+
+
+; this function draws a string of charactes to the screen
+draw_text_line:
+
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 8] ; pointer to initial location in video memory
+    mov bx, [bp + 6] ; offset of string in the memory
+    mov ax, [bp + 4] ; lb - color of the text
+
+    dtl_lp:
+    push di
+    mov cl, [bx]
+    mov ch, al
+    push cx
+    call draw_char
+    add di, 2
+    inc bx
+    cmp [byte ptr bx], '$'
+    jne dtl_lp
+
+
+    mov [bp + 8], bx ; returns the end pointer.
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function draws a "menu_screen" to the screen using draw_text_line
+draw_menu_screen:
+    push bp
+    mov bp, sp
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 10] ; location in video memory where the screen should be drawn
+    mov bx, [bp + 8] ; offset of the screen in memory
+    mov cx, [bp + 6] ; number of lines that should be drawn
+    mov ax, [bp + 4] ; the color the screen should be 
+
+    lp_dsc:
+    push di
+    push bx
+    push ax
+    call draw_text_line
+    pop bx
+    inc bx
+    add di, 160
+    loop lp_dsc
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 8
 
 ; this function draws a given obstacle to the screen 
 draw_obstacle:
