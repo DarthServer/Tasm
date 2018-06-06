@@ -55,9 +55,8 @@ player_target_y db 10
 
 player_width db 3
 player_height db 2
-player_sprite db '****'
-db '****'
-db '****'
+player_sprite db '---'
+db '***'
 player_up_timer db 0 
 
 empty_line db '                                                                 '
