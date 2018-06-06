@@ -213,10 +213,6 @@ draw_char:
 
 ; this function draws a line with a given length from the memory, used to draw ascii sprites
 draw_ascii_line:
-    ; args:
-    ; initial screen location
-    ; initial memory address
-    ; length
     push bp
     mov bp, sp
     push di
@@ -224,7 +220,7 @@ draw_ascii_line:
     push cx
     push ax
 
-    mov di, [bp + 8] ; initial location
+    mov di, [bp + 8] ; initial location on screen
     mov si, [bp + 6] ; initial memory address
     mov cx, [bp + 4] ; length
 
@@ -249,10 +245,6 @@ draw_ascii_line:
 
 ; this function is responsible for drawing an ascii sprite from the memory
 draw_ascii_sprite:
-    ; args:
-    ; initial location on screen
-    ; initial memory address
-    ; width - lb, height - hb
     push bp
 
     mov bp, sp
@@ -438,47 +430,6 @@ beep:
     pop ax
     ret
 
-; this function increases the score, converts it to string and draws it to string.
-update_score:
-    push ax
-
-    inc [word ptr score]
-
-    mov ax, offset score_string
-    add ax, 5 ; length of the string
-    push ax
-
-    mov ax, [score]
-
-    push ax
-
-    call number_to_string ; converts the score number to string
-
-    call draw_score ; draws the score to the screen
-    pop ax
-    ret
-
-; this function is responsible for updating the pseudo-random spawning time of the obstacles.
-update_spawn_time:
-    push ax
-    push bx
-
-    mov ax, 0
-    cmp [create_obstacles_timeout_index], 12
-    jl next_ust
-    mov [create_obstacles_timeout_index], 0
-    next_ust:
-    mov al, [create_obstacles_timeout_index]
-    mov bx, offset create_obstacle_timeouts
-    add bx, ax
-    mov al, [bx]
-    mov [create_obstacles_timeout], al
-    end_ust:
-    inc [create_obstacles_timeout_index]
-    pop bx
-    pop ax
-    ret
-
 ; this function is responsible for clearing the keyboard buffer using int 21h
 clear_keyboard_buffer:
     push ax
@@ -487,49 +438,6 @@ clear_keyboard_buffer:
     mov al,0
     int 21h
 
-    pop ax
-    ret
-
-; this function is responsible for handeling all the logic of the game that is releated to the keyboard IO
-update_io:
-    push ax
-
-    mov ax, 0
-    mov ah, 01h
-
-    int 16h
-    jz exit_io
-
-    mov ah, 00h
-    int 16h
-
-    cmp al, 119
-    je move_up_io
-
-    cmp al, 115
-    je move_down_io
-
-    jmp exit_io
-
-    ; this section of the code changes the playe'rs velocity - the variable that tells the player character in which direction it should move
-
-    move_up_io:
-    cmp [player_velocity], 1
-    je exit_io
-    cmp [player_velocity], 2
-    je exit_io
-    mov [player_velocity], 1
-    call beep
-    jmp exit_io
-
-    move_down_io:
-    cmp [player_velocity], 0
-    je exit_io
-    mov [player_velocity], 2
-    mov [player_up_timer], 0
-
-    exit_io:
-    ;call clear_keyboard_buffer
     pop ax
     ret
 
@@ -669,6 +577,93 @@ check_obstacle_player_collision:
     pop ax
     pop bp
     ret 2
+
+; this function increases the score, converts it to string and draws it to string.
+update_score:
+    push ax
+
+    inc [word ptr score]
+
+    mov ax, offset score_string
+    add ax, 5 ; length of the string
+    push ax
+
+    mov ax, [score]
+
+    push ax
+
+    call number_to_string ; converts the score number to string
+
+    call draw_score ; draws the score to the screen
+    pop ax
+    ret
+
+
+
+; this function is responsible for handeling all the logic of the game that is releated to the keyboard IO
+update_io:
+    push ax
+
+    mov ax, 0
+    mov ah, 01h
+
+    int 16h
+    jz exit_io
+
+    mov ah, 00h
+    int 16h
+
+    cmp al, 119
+    je move_up_io
+
+    cmp al, 115
+    je move_down_io
+
+    jmp exit_io
+
+    ; this section of the code changes the playe'rs velocity - the variable that tells the player character in which direction it should move
+
+    move_up_io:
+    cmp [player_velocity], 1
+    je exit_io
+    cmp [player_velocity], 2
+    je exit_io
+    mov [player_velocity], 1
+    call beep
+    jmp exit_io
+
+    move_down_io:
+    cmp [player_velocity], 0
+    je exit_io
+    mov [player_velocity], 2
+    mov [player_up_timer], 0
+
+    exit_io:
+    ;call clear_keyboard_buffer
+    pop ax
+    ret
+
+
+; this function is responsible for updating the pseudo-random spawning time of the obstacles.
+update_spawn_time:
+    push ax
+    push bx
+
+    mov ax, 0
+    cmp [create_obstacles_timeout_index], 12
+    jl next_ust
+    mov [create_obstacles_timeout_index], 0
+    next_ust:
+    mov al, [create_obstacles_timeout_index]
+    mov bx, offset create_obstacle_timeouts
+    add bx, ax
+    mov al, [bx]
+    mov [create_obstacles_timeout], al
+    end_ust:
+    inc [create_obstacles_timeout_index]
+    pop bx
+    pop ax
+    ret
 
 ; this function is responsable for creating a new obstacle 
 create_obstacle:
@@ -862,7 +857,7 @@ update_player:
     ret
 
 ; this is the main function of the game, it is responsible for updating all the game timers and trigerring all the other game logic functions
-update_timer:
+update_timers:
     push bx
     push cx
     
@@ -1111,7 +1106,7 @@ reset_game:
 ; this is the main game loop, this function updates the win flag according to different game events
 game:
     lp:
-    call update_timer
+    call update_timers
     cmp [score], 1001
     jz win_game
     cmp [running_flag], 0
