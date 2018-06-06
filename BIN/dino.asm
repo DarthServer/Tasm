@@ -15,26 +15,30 @@ update_obstacles_timer dw 0
 create_obstacles_timer dw 0
 create_obstacles_timer_2 db 0
 create_obstacles_timeout db 1
+create_obstacle_timeouts db 5, 3, 7, 3, 6, 1, 7, 3, 7, 1, 5, 3
+create_obstacles_timeout_index db 0
 update_score_timer dw 0
 
 screen_text_initial_x db 5
 screen_text_initial_y db 12
 
-welcome_message_1_string db 'Welcome To Dino, Press Any Key To Start The Game$'
-welcome_message_2_string db 'Press H to view the help menu$'
-welcome_message_4_string db 'Press ESC to exit$'
-welcome_message_3_string db 'Press Any other key to start the game$'
+welcome_screen db 'Welcome To Dino, Press Any Key To Start The Game$'
+db 'Press H to view help menu$'
+db 'Press ESC to exit$'
+db 'Press Any other key to start the game$'
 
-help_message_1_string db 'The Objective Of The Game Is To Avoid The Obstacles$'
-help_message_2_string db 'Press W to jump over the obstacles$'
-help_message_3_string db 'If you touch an obstacle you loose$'
-help_message_4_string db 'If you reach a score of a 1000 you win$'
+help_screen db 'The objective of the game is to avoid the obstacles$'
+db 'Press W to jump over the obstacles$'
+db 'You get score for the time you are running$'
+db 'If you touch the an obstacle you loose$'
+db 'If you reach a score of 1000 you win$'
 
-loose_message_string db 'You Lost The Game!!!$'
-win_message_string db 'You Wone The Game!!!$'
 
-restart_message_string db 'Press Any Key To Restart, Press ESC To Exit$'
+loose_screen db 'You Have Lost The Game!!!$'
+db 'Press Any Key To Replay, Press ESC To Exit$'
 
+win_screen db 'You Have Won The Game!!!$'
+db 'Press Any Key To Replay, Press ESC To Exit$'
 score dw 0
 
 player_x db 5
@@ -67,10 +71,7 @@ obstacle_x db 60
 obstacle_y db 18
 obstacle_locations dw 10 dup(0)
 
-obstalce_spaw_time_counter db 0
-obstacle_spawn_times db 5, 3, 7, 3, 6, 1, 7, 3, 7, 1, 5, 3
-
-score_string db 10 dup(30h)
+score_string db 5 dup(30h)
 
 CODESEG
 ;code
@@ -132,13 +133,45 @@ draw_text_line:
     cmp [byte ptr bx], '$'
     jne dtl_lp
 
+    inc bx
+
+    mov [bp + 8], bx
+
     pop di
     pop cx
     pop bx
     pop ax
     pop bp
-    ret 6
+    ret 4
 
+draw_menu_screen:
+    push bp
+    mov bp, sp
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 10] ; location in video memory where the screen should be drawn
+    mov bx, [bp + 8] ; offset of the screen in memory
+    mov cx, [bp + 6] ; number of lines that should be drawn
+    mov ax, [bp + 4] ; the color the screen should be 
+
+    lp_dsc:
+    push di
+    push bx
+    push ax
+    call draw_text_line
+    pop bx
+    add di, 160
+    loop lp_dsc
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 8
 
 number_to_string:
     push bp
@@ -151,7 +184,7 @@ number_to_string:
     push dx
     push di
 
-    mov di, 10 ; devider 
+    mov di, 10 ; devider - decimal number system
 
     mov bx, [bp + 6] ; offset of last memory location of string
     mov ax, [bp + 4] ; the number that needs to be converted into string
@@ -159,7 +192,6 @@ number_to_string:
     mov dx, 0
 
     strnum_lp:
-
     div di
     add dl, 30h
     mov [bx], dl
@@ -168,10 +200,9 @@ number_to_string:
     cmp ax, 0
     jnz strnum_lp
 
-    mov bx, offset score_string
-    add bx, 10
+    mov bx, [bp + 6] ; getting original pointer
     inc bx
-    mov [byte ptr bx], '$'
+    mov [byte ptr bx], '$'; closing the string 
 
     pop di
     pop dx
@@ -188,7 +219,7 @@ update_score:
     inc [word ptr score]
 
     mov ax, offset score_string
-    add ax, 10
+    add ax, 5 ; length of the string
     push ax
 
     mov ax, [score]
@@ -210,7 +241,7 @@ update_score:
     push ax
 
     call draw_text_line
-
+    pop ax
     pop ax
     ret
 
@@ -219,17 +250,17 @@ update_spawn_time:
     push bx
 
     mov ax, 0
-    cmp [obstalce_spaw_time_counter], 12
+    cmp [create_obstacles_timeout_index], 12
     jl next_ust
-    mov [obstalce_spaw_time_counter], 0
+    mov [create_obstacles_timeout_index], 0
     next_ust:
-    mov al, [obstalce_spaw_time_counter]
-    mov bx, offset obstacle_spawn_times
+    mov al, [create_obstacles_timeout_index]
+    mov bx, offset create_obstacle_timeouts
     add bx, ax
     mov al, [bx]
     mov [create_obstacles_timeout], al
     end_ust:
-    inc [obstalce_spaw_time_counter]
+    inc [create_obstacles_timeout_index]
     pop bx
     pop ax
     ret
@@ -926,77 +957,25 @@ loose_beep:
     ret
 
 draw_welcome_screen:
-    push ax
     push bx
 
     mov bl, [screen_text_initial_x]
     mov bh, [screen_text_initial_y]
-
-
     push bx
-
     call xy_to_pointer
 
-
-    mov ax, offset welcome_message_1_string
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, offset welcome_screen
+    push bx
+    mov bx, 4
+    push bx
+    mov bx, 3
     push bx
 
-    call xy_to_pointer
-
-    mov ax, offset welcome_message_2_string
-    push ax
-
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
-    push bx
-
-    call xy_to_pointer
-
-    mov ax, offset welcome_message_3_string
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-    
-    push bx
-
-    call xy_to_pointer
-
-    mov ax, offset welcome_message_4_string
-    push ax
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
+    call draw_menu_screen
 
     pop bx
-    pop ax
     ret
 draw_loose_screen:
-    push ax
     push bx
 
     mov bl, [screen_text_initial_x]
@@ -1006,35 +985,19 @@ draw_loose_screen:
 
     call xy_to_pointer
 
-    mov ax, offset loose_message_string
-    push ax
-    
-    mov ax, 3
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, offset loose_screen
     push bx
 
-    call xy_to_pointer
+    mov bx, 2
+    push bx
 
-    mov ax, offset restart_message_string
+    mov bx, 3
+    push bx
 
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
+    call draw_menu_screen
     pop bx
-    pop ax
     ret
 draw_win_screen:
-    push ax
     push bx
 
     mov bl, [screen_text_initial_x]
@@ -1044,32 +1007,18 @@ draw_win_screen:
 
     call xy_to_pointer
 
-    mov ax, offset win_message_string
-    push ax
-    
-    mov ax, 3
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, offset win_screen
     push bx
 
-    call xy_to_pointer
+    mov bx, 2
+    push bx
 
-    mov ax, offset restart_message_string
+    mov bx, 3
+    push bx
 
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
+    call draw_menu_screen
 
     pop bx
-    pop ax
     ret
 
 draw_help_screen:
@@ -1084,62 +1033,18 @@ draw_help_screen:
 
     call xy_to_pointer
 
-
-    mov ax, offset help_message_1_string
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, offset help_screen_label
     push bx
 
-    call xy_to_pointer
-
-    mov ax, offset help_message_2_string
-    push ax
-
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, 5
     push bx
 
-    call xy_to_pointer
-
-    mov ax, offset help_message_3_string
-    push ax
-
-    mov ax, 3
-
-    push ax
-
-    call draw_text_line
-
-    inc bh
-
+    mov bx, 3
     push bx
 
-    call xy_to_pointer
-    
-    mov ax, offset help_message_4_string
-    push ax
-
-    mov ax, 3
-    push ax
-    call draw_text_line
+    call draw_menu_screen
 
     pop bx
-    pop ax
     ret
 
 reset_game:
@@ -1152,7 +1057,7 @@ reset_game:
     mov [update_player_timer], 0
     mov [update_score_timer], 0
     mov [player_velocity], 0
-    mov [obstalce_spaw_time_counter], 0
+    mov [create_obstacles_timeout_index], 0
     mov [score], 0
     mov [running_flag], 0
     mov [win_flag], 0
@@ -1209,7 +1114,7 @@ start:
     mov ah, 00h
     int 16h
     cmp ah, 23h
-    je help_screen
+    je help_screen_label
     cmp ah, 01h
     je exit
     call beep
@@ -1238,7 +1143,7 @@ start:
     call reset_game
     jmp game_label
 
-    help_screen:
+    help_screen_label:
     call clear_screen
     call draw_help_screen
     mov ax, 0
@@ -1247,8 +1152,6 @@ start:
     int 16h
     jz help_loop
     jmp draw_welcome
-
-    
 
 exit:
 	mov ax, 4c00h
