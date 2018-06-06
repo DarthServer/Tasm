@@ -95,26 +95,6 @@ update_score:
     pop ax
     ret
 
-; this function is responsible for drawing the score string to the screen
-draw_score:
-    push ax
-    mov ax, [score_screen_location]
-
-    push ax
-
-    mov ax, offset score_string
-
-    push ax
-
-    mov al, 10
-
-    push ax
-
-    call draw_text_line
-    pop ax ; ignored the returned parameter from the function
-    pop ax
-    ret
-
 ; this function is responsible for updating the pseudo-random spawning time of the obstacles.
 update_spawn_time:
     push ax
@@ -926,6 +906,26 @@ draw_menu_screen:
     pop ax
     pop bp
     ret 8
+
+; this function is responsible for drawing the score string to the screen
+draw_score:
+    push ax
+    mov ax, [score_screen_location]
+
+    push ax
+
+    mov ax, offset score_string
+
+    push ax
+
+    mov al, 10
+
+    push ax
+
+    call draw_text_line
+    pop ax ; ignored the returned parameter from the function
+    pop ax
+    ret
 
 ; this function draws a given obstacle to the screen 
 draw_obstacle:
