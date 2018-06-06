@@ -75,6 +75,367 @@ score_string db 5 dup(30h)
 CODESEG
 ;code
 
+; this function converts a given 16 bit number to a string that is saved in the memory
+number_to_string:
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    mov di, 10 ; devider - decimal number system
+
+    mov bx, [bp + 6] ; offset of last memory location of string
+    mov ax, [bp + 4] ; the number that needs to be converted into string
+
+    mov dx, 0
+
+    strnum_lp:
+    div di
+    add dl, 30h
+    mov [bx], dl
+    mov dx, 0
+    dec bx
+    cmp ax, 0
+    jnz strnum_lp
+
+    mov bx, [bp + 6] ; getting original pointer
+    inc bx
+    mov [byte ptr bx], '$'; closing the string with a separator character
+
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function plays a short sound
+beep:
+    push ax
+    push cx
+    
+    mov al, 0b6h            ; prepare the speaker for change frequency
+	out 43h, al
+
+    mov ax,  0a98h          ;frequency of the note 
+	out 42h, al             ; output low byte
+	mov al,  ah
+	out 42h, al             ; output hight byte (out only from register <al>)
+	in al, 61h              ; port 61h - speaker port
+	or al, 00000011b        ; put two lowest bits as 1 for
+	out 61h, al 
+
+    mov cx, 0FFFFh
+    lp_beep:
+	  
+    loop lp_beep
+
+    in al, 61h
+	and al, 11111100b      
+	out 61h, al   
+
+    pop cx
+    pop ax
+    ret
+
+; this function is responsible for converting a given pointer to a char in video memory 
+pointer_to_xy:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov ax, [bp + 4] ; pointer
+    mov dx, 0
+    mov cx, 160
+
+    div cx
+
+    mov bh, al
+
+    mov cl, 2
+    mov al, dl
+    div cl
+    mov bl, al
+
+    ; result -> lb - x, hb - y
+
+    mov [bp + 4], bx 
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 
+
+; this function converts a given x and y parameters into a pointer to a character in video memory
+xy_to_pointer:
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov bx, [bp + 4]; lb - x, hb - y
+    mov ax, 0
+    mov dx, 0
+
+    mov al, bl ; x to multiply
+    mov cx, 2
+
+    mul cx
+
+    mov [bp + 4], ax
+
+    mov ax, 0
+    mov dx, 0
+    mov al, bh ; y to multiply
+    mov cx, 160
+
+    mul cx
+
+    add [bp + 4], ax
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret
+
+; this function is responsible for drawing empty char in place of an ascii sprite
+clear_sprite:
+    push bp
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+
+    mov ax, [bp + 6] ; screen location
+    mov bx, offset empty_line
+    mov cx, [bp + 4] ; width and height
+    
+
+    push ax
+    push bx
+    push cx
+    call draw_ascii_sprite 
+
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function is responsible for clearing the entire video memory
+clear_screen:
+    push di
+    push cx
+
+    mov di, 0
+    mov cx, 160*25
+
+    lp_cls:
+    push di
+    push 0000
+    call draw_char
+    add di, 2
+    loop lp_cls
+
+    pop cx
+    pop di
+    ret 
+
+; this function draws one character to the video screen.
+draw_char:
+
+    push bp
+
+    mov bp, sp
+
+    push di
+    push ax
+
+    mov di, [bp + 6]; location
+    mov ax, [bp + 4]; char and color
+
+    mov [es : di], al ; draws character to screen
+    inc di
+    mov [es : di], ah ; draws color to screen
+
+    pop ax
+    pop di
+    pop bp
+    ret 4
+
+; this function draws a line with a given length from the memory, used to draw ascii sprites
+draw_ascii_line:
+    ; args:
+    ; initial screen location
+    ; initial memory address
+    ; length
+    push bp
+    mov bp, sp
+    push di
+    push si
+    push cx
+    push ax
+
+    mov di, [bp + 8] ; initial location
+    mov si, [bp + 6] ; initial memory address
+    mov cx, [bp + 4] ; length
+
+    mov ax, 0
+    mov ah, 5 ; color
+
+    lp_dl:
+    mov al, [si]
+    push di
+    push ax
+    call draw_char
+    inc si
+    add di, 2
+    loop lp_dl
+
+    pop ax
+    pop cx
+    pop si
+    pop di
+    pop bp
+    ret 6
+
+; this function is responsible for drawing an ascii sprite from the memory
+draw_ascii_sprite:
+    ; args:
+    ; initial location on screen
+    ; initial memory address
+    ; width - lb, height - hb
+    push bp
+
+    mov bp, sp
+
+    push di
+    push si
+    push ax
+    push cx
+    push dx
+    push bx
+
+    mov di, [bp + 8] ; initial screen location
+    mov si, [bp + 6] ; initial memory address
+    mov ax, [bp + 4] ; width and height    
+
+    ; extracts width and height
+    mov dx, 0
+    mov dl, al ; width
+    mov cx, 0
+    mov cl, ah ; height
+
+    ; defines char and color
+    mov bx, 0
+    mov bh, 5
+    mov bl, 0
+    height_loop_dsp:
+    push di
+    push si
+    push dx
+    call draw_ascii_line
+    add si, dx
+    add di, 160
+    loop height_loop_dsp
+    
+    pop bx
+    pop dx
+    pop cx
+    pop ax
+    pop si
+    pop di
+    pop bp
+    ret 6
+
+
+; this function draws a string of charactes to the screen
+draw_text_line:
+
+    push bp
+
+    mov bp, sp
+
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 8] ; pointer to initial location in video memory
+    mov bx, [bp + 6] ; offset of string in the memory
+    mov ax, [bp + 4] ; lb - color of the text
+
+    dtl_lp:
+    push di
+    mov cl, [bx]
+    mov ch, al
+    push cx
+    call draw_char
+    add di, 2
+    inc bx
+    cmp [byte ptr bx], '$'
+    jne dtl_lp
+
+
+    mov [bp + 8], bx ; returns the end pointer.
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 4
+
+; this function draws a "menu_screen" to the screen using draw_text_line
+draw_menu_screen:
+    push bp
+    mov bp, sp
+    push ax
+    push bx
+    push cx
+    push di
+
+    mov di, [bp + 10] ; location in video memory where the screen should be drawn
+    mov bx, [bp + 8] ; offset of the screen in memory
+    mov cx, [bp + 6] ; number of lines that should be drawn
+    mov ax, [bp + 4] ; the color the screen should be 
+
+    lp_dsc:
+    push di
+    push bx
+    push ax
+    call draw_text_line
+    pop bx
+    inc bx
+    add di, 160
+    loop lp_dsc
+
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    pop bp
+    ret 8
+
 ; this function increases the score, converts it to string and draws it to string.
 update_score:
     push ax
@@ -546,366 +907,7 @@ update_timer:
     ret
 
 
-; this function converts a given 16 bit number to a string that is saved in the memory
-number_to_string:
-    push bp
 
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-
-    mov di, 10 ; devider - decimal number system
-
-    mov bx, [bp + 6] ; offset of last memory location of string
-    mov ax, [bp + 4] ; the number that needs to be converted into string
-
-    mov dx, 0
-
-    strnum_lp:
-    div di
-    add dl, 30h
-    mov [bx], dl
-    mov dx, 0
-    dec bx
-    cmp ax, 0
-    jnz strnum_lp
-
-    mov bx, [bp + 6] ; getting original pointer
-    inc bx
-    mov [byte ptr bx], '$'; closing the string with a separator character
-
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
-; this function plays a short sound
-beep:
-    push ax
-    push cx
-    
-    mov al, 0b6h            ; prepare the speaker for change frequency
-	out 43h, al
-
-    mov ax,  0a98h          ;frequency of the note 
-	out 42h, al             ; output low byte
-	mov al,  ah
-	out 42h, al             ; output hight byte (out only from register <al>)
-	in al, 61h              ; port 61h - speaker port
-	or al, 00000011b        ; put two lowest bits as 1 for
-	out 61h, al 
-
-    mov cx, 0FFFFh
-    lp_beep:
-	  
-    loop lp_beep
-
-    in al, 61h
-	and al, 11111100b      
-	out 61h, al   
-
-    pop cx
-    pop ax
-    ret
-
-; this function is responsible for converting a given pointer to a char in video memory 
-pointer_to_xy:
-    push bp
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push dx
-
-    mov ax, [bp + 4] ; pointer
-    mov dx, 0
-    mov cx, 160
-
-    div cx
-
-    mov bh, al
-
-    mov cl, 2
-    mov al, dl
-    div cl
-    mov bl, al
-
-    ; result -> lb - x, hb - y
-
-    mov [bp + 4], bx 
-
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 
-
-; this function converts a given x and y parameters into a pointer to a character in video memory
-xy_to_pointer:
-    push bp
-
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push dx
-
-    mov bx, [bp + 4]; lb - x, hb - y
-    mov ax, 0
-    mov dx, 0
-
-    mov al, bl ; x to multiply
-    mov cx, 2
-
-    mul cx
-
-    mov [bp + 4], ax
-
-    mov ax, 0
-    mov dx, 0
-    mov al, bh ; y to multiply
-    mov cx, 160
-
-    mul cx
-
-    add [bp + 4], ax
-
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret
-
-; this function is responsible for drawing empty char in place of an ascii sprite
-clear_sprite:
-    push bp
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-
-    mov ax, [bp + 6] ; screen location
-    mov bx, offset empty_line
-    mov cx, [bp + 4] ; width and height
-    
-
-    push ax
-    push bx
-    push cx
-    call draw_ascii_sprite 
-
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
-; this function is responsible for clearing the entire video memory
-clear_screen:
-    push di
-    push cx
-
-    mov di, 0
-    mov cx, 160*25
-
-    lp_cls:
-    push di
-    push 0000
-    call draw_char
-    add di, 2
-    loop lp_cls
-
-    pop cx
-    pop di
-    ret 
-
-; this function draws one character to the video screen.
-draw_char:
-
-    push bp
-
-    mov bp, sp
-
-    push di
-    push ax
-
-    mov di, [bp + 6]; location
-    mov ax, [bp + 4]; char and color
-
-    mov [es : di], al ; draws character to screen
-    inc di
-    mov [es : di], ah ; draws color to screen
-
-    pop ax
-    pop di
-    pop bp
-    ret 4
-
-; this function draws a line with a given length from the memory, used to draw ascii sprites
-draw_ascii_line:
-    ; args:
-    ; initial screen location
-    ; initial memory address
-    ; length
-    push bp
-    mov bp, sp
-    push di
-    push si
-    push cx
-    push ax
-
-    mov di, [bp + 8] ; initial location
-    mov si, [bp + 6] ; initial memory address
-    mov cx, [bp + 4] ; length
-
-    mov ax, 0
-    mov ah, 5 ; color
-
-    lp_dl:
-    mov al, [si]
-    push di
-    push ax
-    call draw_char
-    inc si
-    add di, 2
-    loop lp_dl
-
-    pop ax
-    pop cx
-    pop si
-    pop di
-    pop bp
-    ret 6
-
-; this function is responsible for drawing an ascii sprite from the memory
-draw_ascii_sprite:
-    ; args:
-    ; initial location on screen
-    ; initial memory address
-    ; width - lb, height - hb
-    push bp
-
-    mov bp, sp
-
-    push di
-    push si
-    push ax
-    push cx
-    push dx
-    push bx
-
-    mov di, [bp + 8] ; initial screen location
-    mov si, [bp + 6] ; initial memory address
-    mov ax, [bp + 4] ; width and height    
-
-    ; extracts width and height
-    mov dx, 0
-    mov dl, al ; width
-    mov cx, 0
-    mov cl, ah ; height
-
-    ; defines char and color
-    mov bx, 0
-    mov bh, 5
-    mov bl, 0
-    height_loop_dsp:
-    push di
-    push si
-    push dx
-    call draw_ascii_line
-    add si, dx
-    add di, 160
-    loop height_loop_dsp
-    
-    pop bx
-    pop dx
-    pop cx
-    pop ax
-    pop si
-    pop di
-    pop bp
-    ret 6
-
-
-; this function draws a string of charactes to the screen
-draw_text_line:
-
-    push bp
-
-    mov bp, sp
-
-    push ax
-    push bx
-    push cx
-    push di
-
-    mov di, [bp + 8] ; pointer to initial location in video memory
-    mov bx, [bp + 6] ; offset of string in the memory
-    mov ax, [bp + 4] ; lb - color of the text
-
-    dtl_lp:
-    push di
-    mov cl, [bx]
-    mov ch, al
-    push cx
-    call draw_char
-    add di, 2
-    inc bx
-    cmp [byte ptr bx], '$'
-    jne dtl_lp
-
-
-    mov [bp + 8], bx ; returns the end pointer.
-
-    pop di
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 4
-
-; this function draws a "menu_screen" to the screen using draw_text_line
-draw_menu_screen:
-    push bp
-    mov bp, sp
-    push ax
-    push bx
-    push cx
-    push di
-
-    mov di, [bp + 10] ; location in video memory where the screen should be drawn
-    mov bx, [bp + 8] ; offset of the screen in memory
-    mov cx, [bp + 6] ; number of lines that should be drawn
-    mov ax, [bp + 4] ; the color the screen should be 
-
-    lp_dsc:
-    push di
-    push bx
-    push ax
-    call draw_text_line
-    pop bx
-    inc bx
-    add di, 160
-    loop lp_dsc
-
-    pop di
-    pop cx
-    pop bx
-    pop ax
-    pop bp
-    ret 8
 
 ; this function is responsible for drawing the score string to the screen
 draw_score:
