@@ -50,25 +50,25 @@ player_high_y db 8
 player_low_y db 20 
 
 player_up_tiemout db 3
-
-player_target_y db 10
+player_up_timer db 0 
 
 player_width db 3
 player_height db 2
 player_sprite db '---'
 db '***'
-player_up_timer db 0 
 
 empty_line db '                                                                 '
+
+obstacle_width db 2
+obstacle_height db 4
 obstacle_sprite db '||'
 db '||'
 db '**'
 db '**'
-obstacle_width db 2
-obstacle_height db 4
-obstacle_x db 60
-obstacle_y db 18
-obstacle_locations dw 10 dup(0)
+
+obstacle_starting_x db 60
+obstacle_starting_y db 18
+current_obstacle_locations dw 10 dup(0)
 
 score_string db 5 dup(30h)
 
@@ -470,10 +470,10 @@ create_obstacle:
     push cx
     push dx
 
-    mov bx, offset obstacle_locations
+    mov bx, offset current_obstacle_locations
 
-    mov dl, [obstacle_x]
-    mov dh, [obstacle_y]
+    mov dl, [obstacle_starting_x]
+    mov dh, [obstacle_starting_y]
     push dx
     call xy_to_pointer
     pop dx
@@ -553,7 +553,7 @@ update_obstacles:
     push bx
     push cx
 
-    mov bx, offset obstacle_locations
+    mov bx, offset current_obstacle_locations
     mov cx, 7
 
     lp_uo:
@@ -1090,7 +1090,7 @@ reset_game:
     mov [win_flag], 0
     mov [sound_flag], 0
     mov [player_y], 20
-    mov bx, offset obstacle_locations
+    mov bx, offset current_obstacle_locations
     mov cx, 7
 
     lp_rg:
