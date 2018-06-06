@@ -61,8 +61,8 @@ db '****'
 player_up_timer db 0 
 
 empty_line db '                                                                 '
-obstacle_sprite db '**'
-db '**'
+obstacle_sprite db '||'
+db '||'
 db '**'
 db '**'
 obstacle_width db 2
@@ -75,11 +75,8 @@ score_string db 5 dup(30h)
 
 CODESEG
 ;code
-close_sound:
-    in al, 61h
-	and al, 11111100b      
-	out 61h, al              ;turn speaker off
-	ret
+
+; this function plays a short sound
 beep:
     push ax
     push cx
@@ -100,13 +97,15 @@ beep:
 	  
     loop lp_beep
 
-    call close_sound
+    in al, 61h
+	and al, 11111100b      
+	out 61h, al   
 
     pop cx
     pop ax
     ret
 
-
+; this function draws a string of charactes to the screen
 draw_text_line:
 
     push bp
@@ -133,9 +132,8 @@ draw_text_line:
     cmp [byte ptr bx], '$'
     jne dtl_lp
 
-    inc bx
 
-    mov [bp + 8], bx
+    mov [bp + 8], bx ; returns the end pointer.
 
     pop di
     pop cx
@@ -144,6 +142,7 @@ draw_text_line:
     pop bp
     ret 4
 
+; this function draws a "menu_screen" to the screen using draw_text_line
 draw_menu_screen:
     push bp
     mov bp, sp
@@ -163,6 +162,7 @@ draw_menu_screen:
     push ax
     call draw_text_line
     pop bx
+    inc bx
     add di, 160
     loop lp_dsc
 
@@ -173,6 +173,7 @@ draw_menu_screen:
     pop bp
     ret 8
 
+; this function converts a given 16 bit number to a string that is saved in the memory
 number_to_string:
     push bp
 
@@ -202,7 +203,7 @@ number_to_string:
 
     mov bx, [bp + 6] ; getting original pointer
     inc bx
-    mov [byte ptr bx], '$'; closing the string 
+    mov [byte ptr bx], '$'; closing the string with a separator character
 
     pop di
     pop dx
@@ -212,7 +213,7 @@ number_to_string:
     pop bp
     ret 4
 
-
+; this function increases the score, converts it to string and draws it to string.
 update_score:
     push ax
 
@@ -226,8 +227,15 @@ update_score:
 
     push ax
 
-    call number_to_string
+    call number_to_string ; converts the score number to string
 
+    call draw_score ; draws the score to the screen
+    pop ax
+    ret
+
+; this function is responsible for drawing the score string to the screen
+draw_score:
+    push ax
     mov ax, [score_screen_location]
 
     push ax
@@ -241,10 +249,11 @@ update_score:
     push ax
 
     call draw_text_line
-    pop ax
+    pop ax ; ignored the returned parameter from the function
     pop ax
     ret
 
+; this function is responsible for updating the pseudo-random spawning time of the obstacles.
 update_spawn_time:
     push ax
     push bx
@@ -265,6 +274,7 @@ update_spawn_time:
     pop ax
     ret
 
+; this function is responsible for clearing the keyboard buffer using int 21h
 clear_keyboard_buffer:
     push ax
 
@@ -275,8 +285,8 @@ clear_keyboard_buffer:
     pop ax
     ret
 
+; this function is responsible for handeling all the logic of the game that is releated to the keyboard IO
 update_io:
-
     push ax
 
     mov ax, 0
@@ -295,6 +305,8 @@ update_io:
     je move_down_io
 
     jmp exit_io
+
+    ; this section of the code changes the playe'rs velocity - the variable that tells the player character in which direction it should move
 
     move_up_io:
     cmp [player_velocity], 1
@@ -316,6 +328,8 @@ update_io:
     pop ax
     ret
 
+; this function check if two lines are colliding with each other.
+; returns 1 or 0 according to the result of the calculation
 check_1d_collision:
     ; checks for 
     ; t == t'
@@ -359,6 +373,7 @@ check_1d_collision:
     pop bp
     ret 2
 
+; this function checks if two rectangels collide with one another using check_1d_collision on both of the damations of the rectangles
 check_2d_collision:
     push bp
     mov bp, sp
@@ -400,6 +415,8 @@ check_2d_collision:
     pop bp
     ret 6
 
+
+; this function checks if the player character collides with a given obstacle
 check_obstacle_player_collision:
     push bp
     mov bp, sp
@@ -448,6 +465,7 @@ check_obstacle_player_collision:
     pop bp
     ret 2
 
+; this function is responsable for creating a new obstacle 
 create_obstacle:
     push bx
     push cx
@@ -476,6 +494,7 @@ create_obstacle:
     pop bx
     ret 
 
+; this function is responsible for drawing a blank screen where a given obstacle once stood
 clear_obstacle:
     push bp
     mov bp, sp
@@ -498,6 +517,7 @@ clear_obstacle:
     pop bp
     ret 2
 
+; this function is responsible for moving a given obstacle to the left side of the screen
 move_obstacle:
     push bp
     mov bp, sp
@@ -528,6 +548,7 @@ move_obstacle:
     pop bp
     ret 2
 
+; this function gathers all of the logic that is releated to obstacles.
 update_obstacles:
     push ax
     push bx
@@ -557,6 +578,7 @@ update_obstacles:
     pop ax
     ret
 
+; this function is responsible for moving the player character up
 move_player_up:
     push ax
 
@@ -577,6 +599,7 @@ move_player_up:
     pop ax
     ret
 
+; this function is responsible for moving the player character down
 move_player_down:
     push ax
 
@@ -593,6 +616,7 @@ move_player_down:
     pop ax
     ret
 
+; this function is responsible for handeling all the logic that is releated to the player - drawing and moving.
 update_player:
     push ax
     push cx
@@ -632,6 +656,7 @@ update_player:
     pop ax
     ret
 
+; this is the main function of the game, it is responsible for updating all the game timers and trigerring all the other game logic functions
 update_timer:
     push bx
     push cx
@@ -678,6 +703,7 @@ update_timer:
     pop cx
     ret
 
+; this function is responsible for converting a given pointer to a char in video memory 
 pointer_to_xy:
     push bp
     mov bp, sp
@@ -711,6 +737,7 @@ pointer_to_xy:
     pop bp
     ret 
 
+; this function converts a given x and y parameters into a pointer to a character in video memory
 xy_to_pointer:
     push bp
 
@@ -748,6 +775,7 @@ xy_to_pointer:
     pop bp
     ret
 
+; this function is responsible for drawing empty char in place of an ascii sprite
 clear_sprite:
     push bp
     mov bp, sp
@@ -772,6 +800,7 @@ clear_sprite:
     pop bp
     ret 4
 
+; this function is responsible for clearing the entire video memory
 clear_screen:
     push di
     push cx
@@ -790,6 +819,7 @@ clear_screen:
     pop di
     ret 
 
+; this function draws one character to the video screen.
 draw_char:
 
     push bp
@@ -811,6 +841,7 @@ draw_char:
     pop bp
     ret 4
 
+; this function draws a line with a given length from the memory, used to draw ascii sprites
 draw_ascii_line:
     ; args:
     ; initial screen location
@@ -846,6 +877,7 @@ draw_ascii_line:
     pop bp
     ret 6
 
+; this function is responsible for drawing an ascii sprite from the memory
 draw_ascii_sprite:
     ; args:
     ; initial location on screen
@@ -894,6 +926,7 @@ draw_ascii_sprite:
     pop bp
     ret 6
 
+; this function draws a given obstacle to the screen 
 draw_obstacle:
     push bp
     mov bp, sp
@@ -924,6 +957,7 @@ draw_obstacle:
     pop bp
     ret 2
 
+; this function is responsible for drawing the player character to the screen
 draw_player:
     push ax
 
@@ -944,18 +978,7 @@ draw_player:
 
     pop ax
     ret
-
-; menu and game-stage releated code 
-
-loose_beep:
-    push cx
-    mov cx, 025
-    beep_lp:
-    call beep
-    loop beep_lp
-    pop cx
-    ret
-
+; this function draws the welcome screen
 draw_welcome_screen:
     push bx
 
@@ -975,6 +998,8 @@ draw_welcome_screen:
 
     pop bx
     ret
+
+; this function draws the loose screen 
 draw_loose_screen:
     push bx
 
@@ -997,6 +1022,8 @@ draw_loose_screen:
     call draw_menu_screen
     pop bx
     ret
+
+; this function draws the win screen 
 draw_win_screen:
     push bx
 
@@ -1020,7 +1047,7 @@ draw_win_screen:
 
     pop bx
     ret
-
+; this function draws the help screen
 draw_help_screen:
     push ax
     push bx
@@ -1033,7 +1060,7 @@ draw_help_screen:
 
     call xy_to_pointer
 
-    mov bx, offset help_screen_label
+    mov bx, offset help_menu_label
     push bx
 
     mov bx, 5
@@ -1047,6 +1074,7 @@ draw_help_screen:
     pop bx
     ret
 
+; this function resets all the important variables for the game to restart properly
 reset_game:
     push bx
     push cx
@@ -1075,10 +1103,11 @@ reset_game:
     pop bx
     ret
 
+; this is the main game loop, this function updates the win flag according to different game events
 game:
     lp:
     call update_timer
-    cmp [score], 01000
+    cmp [score], 1001
     jz win_game
     cmp [running_flag], 0
     jz lp
@@ -1087,12 +1116,6 @@ game:
     mov [win_flag], 1
     end_game:
     ret
-
-exitProgram:
-    call close_sound
-    mov ax, 4c00h
-    int 21h
-    ret 
 
 start:
 	mov ax, @data
@@ -1114,7 +1137,7 @@ start:
     mov ah, 00h
     int 16h
     cmp ah, 23h
-    je help_screen_label
+    je help_menu_label
     cmp ah, 01h
     je exit
     call beep
@@ -1125,10 +1148,10 @@ start:
     cmp [win_flag], 0
     jnz draw_win
     call draw_loose_screen
-    jmp restart_label
+    jmp restart_menu_label
     draw_win:
     call draw_win_screen
-    restart_label:
+    restart_menu_label:
     mov ax, 0
     mov ah, 01h
     restart_loop:
@@ -1143,7 +1166,7 @@ start:
     call reset_game
     jmp game_label
 
-    help_screen_label:
+    help_menu_label:
     call clear_screen
     call draw_help_screen
     mov ax, 0
