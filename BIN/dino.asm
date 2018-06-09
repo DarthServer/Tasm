@@ -1061,7 +1061,7 @@ draw_help_screen:
 
     call xy_to_pointer
 
-    mov bx, offset help_menu_screen
+    mov bx, offset help_screen
     push bx
 
     mov bx, 6
