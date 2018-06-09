@@ -12,12 +12,12 @@ score_screen_location dw 0h
 
 update_player_timer dw 0
 update_obstacles_timer dw 0
+update_score_timer dw 0
 create_obstacles_timer dw 0
 create_obstacles_timer_2 db 0
 create_obstacles_timeout db 1
 create_obstacle_timeouts db 5, 3, 7, 3, 6, 1, 7, 3, 7, 1, 5, 3
 create_obstacles_timeout_index db 0
-update_score_timer dw 0
 
 screen_text_initial_x db 5
 screen_text_initial_y db 12
@@ -32,6 +32,7 @@ db 'Press W to jump over the obstacles$'
 db 'You get score for the time you are running$'
 db 'If you touch the an obstacle you loose$'
 db 'If you reach a score of 1000 you win$'
+db 'Press any key to go back to the welcome screen'
 
 
 loose_screen db 'You Have Lost The Game!!!$'
@@ -1063,7 +1064,7 @@ draw_help_screen:
     mov bx, offset help_menu_label
     push bx
 
-    mov bx, 5
+    mov bx, 6
     push bx
 
     mov bx, 3
