@@ -11,7 +11,7 @@ win_flag db 0
 score_screen_location dw 0h
 
 update_player_timer dw 0
-update_obstacles_timer dw 0
+update_obstacles_timer dw 0 
 update_score_timer dw 0
 create_obstacles_timer dw 0
 create_obstacles_timer_2 db 0
@@ -1061,7 +1061,7 @@ draw_help_screen:
 
     call xy_to_pointer
 
-    mov bx, offset help_menu_label
+    mov bx, offset help_menu_screen
     push bx
 
     mov bx, 6
