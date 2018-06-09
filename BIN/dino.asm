@@ -32,7 +32,7 @@ db 'Press W to jump over the obstacles$'
 db 'You get score for the time you are running$'
 db 'If you touch the an obstacle you loose$'
 db 'If you reach a score of 1000 you win$'
-db 'Press any key to go back to the welcome screen'
+db 'Press any key to go back to the welcome screen$'
 
 
 loose_screen db 'You Have Lost The Game!!!$'
