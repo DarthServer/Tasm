@@ -1050,7 +1050,6 @@ draw_win_screen:
     ret
 ; this function draws the help screen
 draw_help_screen:
-    push ax
     push bx
 
     mov bl, [screen_text_initial_x]
