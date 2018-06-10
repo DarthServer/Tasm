@@ -57,7 +57,7 @@ moveUp:
 
     ; checks if pointer is lower than the upper border
     sub di, 160
-    cmp di, 0
+    cmp di, 160 * 3
     jl endMU
 
     mov [bp + 4], di
@@ -81,7 +81,7 @@ moveDown:
 
     ; checkes if pointer is bigger than the lower border
     add di, 160
-    cmp di, 160 * 25
+    cmp di, 160 * 22
     jg endMD
     ; end block
 
